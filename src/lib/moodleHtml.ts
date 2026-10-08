@@ -63,9 +63,23 @@ export function buildMoodleHtml(
     }
   });
 
+  // 3. Пустые блоки-«отбивки»: `<h5>&nbsp;</h5>`, `<p><br></p>` и т.п.
+  //    В Moodle ими часто набирают воздух — у нас свои отступы, поэтому убираем.
+  const EMPTY_BLOCKS = "p,h1,h2,h3,h4,h5,h6,div,span,li,section,article,header,footer";
+  for (let pass = 0; pass < 3; pass++) {
+    let removed = 0;
+    doc.querySelectorAll(EMPTY_BLOCKS).forEach((el) => {
+      if (el.querySelector("img,hr,table,iframe,video,audio,svg,source")) return;
+      if ((el.textContent ?? "").replace(/[\s\u00a0]/g, "") !== "") return;
+      el.remove();
+      removed++;
+    });
+    if (!removed) break;
+  }
+
   html = doc.body.innerHTML;
 
-  // 3. Не забываем про target у ссылок, если парсер их не сохранил
+  // 4. Не забываем про target у ссылок, если парсер их не сохранил
   return html;
 }
 

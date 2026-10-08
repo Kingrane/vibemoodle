@@ -32,7 +32,7 @@ function Label({ module, token }: { module: MoodleModule; token: string }) {
   return (
     <li className="border-b border-line py-4 last:border-b-0">
       <div
-        className="moodle-content text-body-sm"
+        className="moodle-content moodle-content--compact"
         dangerouslySetInnerHTML={{ __html: html }}
       />
     </li>
@@ -117,6 +117,7 @@ function SectionBlock({
 }) {
   const [open, setOpen] = useState(index < 3);
   const accent = accentFor(section.id);
+  const summaryHtml = buildMoodleHtml(section.summary, [], token);
 
   return (
     <div className="border-t border-line">
@@ -148,6 +149,12 @@ function SectionBlock({
         />
       </button>
 
+      {open && summaryHtml && (
+        <div
+          className="moodle-content moodle-content--compact pb-5 md:pl-12"
+          dangerouslySetInnerHTML={{ __html: summaryHtml }}
+        />
+      )}
       {open && section.modules.length > 0 && (
         <ul className="pb-4 md:pl-12">
           {section.modules.map((module) => (
@@ -155,7 +162,7 @@ function SectionBlock({
           ))}
         </ul>
       )}
-      {open && section.modules.length === 0 && (
+      {open && section.modules.length === 0 && !summaryHtml && (
         <p className="pb-6 text-caption text-muted md:pl-12">раздел пуст</p>
       )}
     </div>

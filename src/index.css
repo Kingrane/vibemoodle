@@ -460,6 +460,24 @@ button.card:hover {
 .moodle-content--compact table {
   font-size: 15px;
 }
+.moodle-content--compact h1,
+.moodle-content--compact h2,
+.moodle-content--compact h3,
+.moodle-content--compact h4,
+.moodle-content--compact h5 {
+  margin: 1em 0 0.4em;
+}
+.moodle-content--compact p,
+.moodle-content--compact ul,
+.moodle-content--compact ol,
+.moodle-content--compact blockquote,
+.moodle-content--compact table,
+.moodle-content--compact pre {
+  margin-bottom: 0.85em;
+}
+.moodle-content--compact li {
+  margin: 0.2em 0;
+}
 
 @keyframes spin {
   to {
