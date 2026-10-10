@@ -65,7 +65,7 @@ export function DashboardPage() {
         eyebrow="курсы"
         title="Мои дисциплины"
         action={
-          <PillLink to="/courses" small>
+          <PillLink to="/catalog" small>
             все курсы
             <ArrowRight className="h-4 w-4" strokeWidth={1.5} />
           </PillLink>
