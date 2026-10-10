@@ -1,6 +1,7 @@
 import { callFunction, fileUrl } from "./transport";
 import type {
   ActionEvent,
+  CatalogCourse,
   CourseGradeOverview,
   GradeItem,
   MoodleAssignment,
@@ -72,6 +73,16 @@ export const getUrls = async (token: string, courseid: number) => {
 export const getQuizBestGrade = (token: string, quizid: number) =>
   callFunction<QuizBestGrade>(token, "mod_quiz_get_user_best_grade", { quizid });
 
+
+/** Курсы одной категории (для каталога). Отдаёт в том числе `enrollmentmethods`. */
+export const getCoursesByCategory = async (token: string, categoryid: number) => {
+  const data = await callFunction<{ courses: CatalogCourse[] }>(
+    token,
+    "core_course_get_courses_by_field",
+    { field: "category", value: String(categoryid) },
+  );
+  return data.courses ?? [];
+};
 
 export const searchCourses = (token: string, query: string) =>
   callFunction<{ courses: SearchCourseResult[]; total: number }>(

@@ -277,6 +277,46 @@ export interface SearchCourseResult {
   visible?: number;
 }
 
+/** Категория курсов (`core_course_get_categories`). */
+export interface CourseCategory {
+  id: number;
+  name: string;
+  parent: number;
+  depth: number;
+  coursecount: number;
+  visible?: number;
+  idnumber?: string;
+}
+
+/** Курс из каталога (`core_course_get_courses_by_field`). */
+export interface CatalogCourse {
+  id: number;
+  fullname: string;
+  displayname?: string;
+  shortname: string;
+  categoryid: number;
+  categoryname?: string;
+  summary?: string;
+  summaryformat?: number;
+  /** Способы записи: `manual`, `self`, `guest`. */
+  enrollmentmethods?: string[];
+  startdate?: number;
+  enddate?: number;
+  visible?: number;
+}
+
+export interface EnrolWarning {
+  item?: string;
+  itemid?: number;
+  warningcode?: string;
+  message?: string;
+}
+
+export interface EnrolResult {
+  status?: boolean;
+  warnings?: EnrolWarning[];
+}
+
 export interface MoodlePage {
   id: number;
   coursemodule: number;

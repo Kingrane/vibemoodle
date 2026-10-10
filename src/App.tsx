@@ -5,6 +5,7 @@ import { AppShell } from "@/ui/AppShell";
 import { LoginPage } from "@/routes/Login";
 import { DashboardPage } from "@/routes/Dashboard";
 import { CoursesPage } from "@/routes/Courses";
+import { CatalogPage } from "@/routes/Catalog";
 import { CoursePage } from "@/routes/CoursePage";
 import { GradesPage } from "@/routes/Grades";
 import { CalendarPage } from "@/routes/Calendar";
@@ -43,6 +44,14 @@ export function App() {
         element={
           <Protected>
             <CoursePage />
+          </Protected>
+        }
+      />
+      <Route
+        path="/catalog"
+        element={
+          <Protected>
+            <CatalogPage />
           </Protected>
         }
       />

@@ -12,11 +12,15 @@
 
 ## 1. Жёсткие правила (не нарушать)
 
-1. **Чтение + сдача своих заданий — и ничего больше.** По умолчанию всё чтение.
-   Единственная запись на сервер — отправка ответа на задание (файлы/онлайн-текст)
-   по явному действию пользователя: `src/api/submission.ts` +
-   `src/ui/SubmissionForm.tsx`. Тесты не проходить, чужие данные не трогать,
-   ничего не отправлять автоматически и без подтверждения.
+1. **Чтение + сдача своих заданий + запись на курс — и ничего больше.** По
+   умолчанию всё чтение. Разрешены ровно две записи на сервер, обе — только по
+   явному действию пользователя и с подтверждением:
+   - отправка ответа на задание (файлы/онлайн-текст): `src/api/submission.ts` +
+     `src/ui/SubmissionForm.tsx`;
+   - самостоятельная запись на курс: `src/api/enrolment.ts` +
+     `src/routes/Catalog.tsx`.
+   Тесты не проходить, чужие данные не трогать, ничего не отправлять
+   автоматически и без подтверждения.
 2. **Не лезть в преподавательские функции.** Только аккаунт студента.
 3. **Нет своего бэкенда.** Браузер обращается к Moodle напрямую. Если понадобится
    прокси — меняются только адреса в `src/api/transport.ts`.
@@ -52,9 +56,11 @@ src/
     transport.ts   HTTP к Moodle: обмен пароля на токен, callFunction, fileUrl,
                    MoodleError, encodeParams (плоские ключи courseids[0])
     moodle.ts      все вызовы ws-функций, разбор ответов
-    submission.ts  ЕДИНСТВЕННЫЙ пишущий модуль: загрузка файлов в черновик
-                   (webservice/upload.php), mod_assign_save_submission,
+    submission.ts  ЕДИНСТВЕННЫЙ пишущий модуль сдачи: загрузка файлов в
+                   черновик (webservice/upload.php), mod_assign_save_submission,
                    submit_for_grading, remove_submission
+    enrolment.ts   вторая разрешённая запись: enrol_self_enrol_user
+                   (самостоятельная запись на курс, только из каталога)
     types.ts       типы ответов Moodle
     hooks.ts       React Query хуки (ключи: ["courses"], ["contents", id], …)
   session/
@@ -71,14 +77,15 @@ src/
   ui/              AppShell, primitives, CourseCard, FileList, FilePreview,
                    SubmissionForm (форма сдачи), DeadlineRow, SubmissionBadge,
                    Logo, UserMenu, ThemeToggle
-  routes/          Login, Dashboard, Courses, CoursePage, ModulePage, Grades,
-                   Calendar, Search
+  routes/          Login, Dashboard, Courses, Catalog, CoursePage, ModulePage,
+                   Grades, Calendar, Search
   App.tsx          роуты
   index.css        дизайн-система (переменные тем + классы утилит)
 ```
 
-Роуты: `/login`, `/` (дешборд), `/courses`, `/courses/:courseid`,
-`/module/:cmid`, `/grades`, `/calendar`, `/search`.
+Роуты: `/login`, `/` (дешборд), `/courses` (мои курсы), `/catalog` (каталог
+ФИИТ с записью), `/courses/:courseid`, `/module/:cmid`, `/grades`, `/calendar`,
+`/search`.
 
 ## 5. Слой данных
 
@@ -93,6 +100,7 @@ src/
 **Используемые ws-функции:** `core_webservice_get_site_info`,
 `core_enrol_get_users_courses`, `core_course_get_contents`,
 `core_course_get_course_module`, `core_course_search_courses`,
+`core_course_get_categories`, `core_course_get_courses_by_field`,
 `gradereport_user_get_grade_items`, `gradereport_overview_get_course_grades`,
 `core_calendar_get_action_events_by_timesort`,
 `core_calendar_get_action_events_by_course`,
@@ -106,6 +114,12 @@ src/
 `plugindata[onlinetext_editor][text|format|itemid]`),
 `mod_assign_submit_for_grading` (только если `submissiondrafts=1` или
 `requiresubmissionstatement=1`), `mod_assign_remove_submission`.
+
+**Запись (запись на курс, `enrolment.ts`):** `enrol_self_enrol_user` — только
+из каталога `/catalog`, по подтверждению. Дерево категорий: верхний уровень —
+семестры (`11` осень, `8` весна), внутри — факультеты; каталог ФИИТ открывает
+`categoryid=13` (осень) и `10` (весна). Возможность записи видна заранее по
+`enrollmentmethods` (`self`) из `core_course_get_courses_by_field`.
 
 **Важные детали:**
 

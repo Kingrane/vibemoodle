@@ -1,6 +1,7 @@
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useSession } from "@/session/useSession";
 import * as api from "./moodle";
+import * as enrolment from "./enrolment";
 import * as submission from "./submission";
 
 /** Все запросы привязаны к токену — при выходе кэш недоступен. */
@@ -22,6 +23,30 @@ export function useMyCourses() {
     queryFn: () => api.getUserCourses(token!, userid!),
     enabled: !!token && !!userid,
     staleTime: 1000 * 60 * 10,
+  });
+}
+
+/** Курсы одной категории — для каталога. */
+export function useCatalogCourses(categoryid: number) {
+  const { token } = useSession();
+  return useQuery({
+    queryKey: ["catalog", token, categoryid],
+    queryFn: () => api.getCoursesByCategory(token!, categoryid),
+    enabled: !!token && Number.isFinite(categoryid),
+    staleTime: 1000 * 60 * 5,
+  });
+}
+
+/** Самостоятельная запись на курс (единственная запись, кроме сдачи заданий). */
+export function useEnrolSelf() {
+  const { token } = useSession();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (courseid: number) => enrolment.enrolSelf(token!, courseid),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["courses"] });
+      queryClient.invalidateQueries({ queryKey: ["catalog"] });
+    },
   });
 }
 

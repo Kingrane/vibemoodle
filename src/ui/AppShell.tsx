@@ -9,7 +9,8 @@ import { UserMenu } from "./UserMenu";
 
 const NAV = [
   { to: "/", label: "дешборд", end: true },
-  { to: "/courses", label: "курсы" },
+  { to: "/courses", label: "мои курсы" },
+  { to: "/catalog", label: "курсы" },
   { to: "/grades", label: "оценки" },
   { to: "/calendar", label: "календарь" },
 ];
