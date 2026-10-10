@@ -96,7 +96,7 @@ export function CatalogPage() {
         <div className="mt-8 flex flex-wrap items-end justify-between gap-6">
           <div className="flex flex-col gap-3">
             <h1 className="text-heading-sm font-semibold tracking-[-0.03em] md:text-heading">
-              Курсы факультета
+              Курсы ФИИТ
             </h1>
             <p className="max-w-2xl text-body-sm text-muted">
               {FACULTY}. Выберите семестр и запишитесь на нужные дисциплины —
