@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { ChevronLeft, Loader2, Paperclip, Sparkles, Timer, X } from "lucide-react";
+import { Check, ChevronLeft, ClipboardCopy, Loader2, Paperclip, Sparkles, Timer, X } from "lucide-react";
 import type { MoodleModule } from "@/api/types";
 import { gatherMaterial } from "@/api/material";
+import { buildAgentPrompt } from "@/api/agentPrompt";
 import { askSolver, SOLVER_LOGIN, SOLVER_READY } from "@/api/inception";
 import { useSession } from "@/session/useSession";
 import { cx } from "@/lib/cx";
@@ -34,6 +35,34 @@ interface Attachment {
 const FIELD =
   "w-full resize-y rounded-card border border-line bg-transparent px-3 py-2 text-body-sm outline-none transition-colors duration-300 placeholder:text-muted/50 focus:border-cream";
 
+type CopyState = "idle" | "busy" | "done" | "fail";
+
+const COPY_LABEL: Record<CopyState, string> = {
+  idle: "секретная кнопка",
+  busy: "собираю промпт…",
+  done: "промпт скопирован",
+  fail: "не удалось скопировать",
+};
+
+/** В буфер обмена: сначала Clipboard API, потом фолбэк для http и старых браузеров. */
+async function copyText(text: string): Promise<void> {
+  try {
+    await navigator.clipboard.writeText(text);
+    return;
+  } catch {
+    /* нет разрешения или не secure context — пробуем старый способ */
+  }
+  const area = document.createElement("textarea");
+  area.value = text;
+  area.style.position = "fixed";
+  area.style.opacity = "0";
+  document.body.append(area);
+  area.select();
+  const ok = document.execCommand("copy");
+  area.remove();
+  if (!ok) throw new Error("копирование не сработало");
+}
+
 /** Минимальная разметка ответа: ```-блоки как код, остальное как текст. */
 function AnswerView({ text }: { text: string }) {
   const parts = text.split("```");
@@ -64,12 +93,16 @@ function AnswerView({ text }: { text: string }) {
 }
 
 /**
- * «Супер кнопка» — демонстрационный решатель задач по материалу.
- * Видна только одному логину: это не учебная функция приложения.
+ * Две кнопки на странице материала.
  *
- * Панель не показывается до нажатия: «супер кнопка» открывает её и сразу
- * отправляет материал в модель, а еле заметная стрелка у края — только
- * открывает панель, без запроса.
+ * «Супер кнопка» — мгновенный ответ модели: видна только SOLVER_LOGIN (ключ
+ * оплачивает владелец), логин перепроверяется на каждый клик. Открывает панель и
+ * сразу отправляет материал в модель.
+ * «Секретная кнопка» — доступна всем: собирает самодостаточный промпт из условия
+ * задания и копирует его в буфер, чтобы отдать агенту-кодеру.
+ *
+ * Панель не показывается до нажатия: её открывает «супер кнопка», а еле заметная
+ * стрелка у края — только открывает, без запроса (там же лежат заготовки).
  */
 export function SuperButton({
   cm,
@@ -85,8 +118,15 @@ export function SuperButton({
   const [state, setState] = useState<SolverState>({ status: "idle", answer: "" });
   const [files, setFiles] = useState<Attachment[]>([]);
   const [paste, setPaste] = useState("");
+  const [copy, setCopy] = useState<CopyState>("idle");
   const abortRef = useRef<AbortController | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+
+  /** Заготовки одним блоком: и для модели, и для промпта агенту. */
+  const extraContext = () =>
+    [...files.map((f) => `--- ${f.name} ---\n${f.text}`), paste.trim()]
+      .filter(Boolean)
+      .join("\n\n");
 
   const addFiles = async (list: FileList | null) => {
     if (!list?.length) return;
@@ -120,15 +160,10 @@ export function SuperButton({
     try {
       const material = await gatherMaterial(token, cm, mod);
       // Заготовки со страницы сдаются вместе с текстом материала.
-      const attachments = [
-        ...files.map((f) => `--- ${f.name} ---\n${f.text}`),
-        paste.trim(),
-      ]
-        .filter(Boolean)
-        .join("\n\n");
+      const extra = extraContext();
       const question = [
         material || cm.name,
-        attachments && `Заготовки от студента:\n${attachments}`,
+        extra && `Заготовки от студента:\n${extra}`,
       ]
         .filter(Boolean)
         .join("\n\n");
@@ -160,22 +195,56 @@ export function SuperButton({
     }
   };
 
-  if (!SOLVER_READY || username?.toLowerCase() !== SOLVER_LOGIN) return null;
+  const copyPrompt = async () => {
+    setCopy("busy");
+    try {
+      const material = await gatherMaterial(token, cm, mod);
+      await copyText(
+        buildAgentPrompt({ title: cm.name, material, attachments: extraContext() }),
+      );
+      setCopy("done");
+    } catch {
+      setCopy("fail");
+    }
+  };
 
+  useEffect(() => {
+    if (copy !== "done" && copy !== "fail") return;
+    const timer = setTimeout(() => setCopy("idle"), 2500);
+    return () => clearTimeout(timer);
+  }, [copy]);
+
+  /** Решать моделью может только владелец ключа; остальным остаётся промпт. */
+  const canSolve = SOLVER_READY && username?.toLowerCase() === SOLVER_LOGIN;
   const busy = state.status === "loading";
 
   return (
     <>
-      <PillButton
-        className="w-fit self-start"
-        onClick={() => {
-          setOpen(true);
-          void run();
-        }}
-      >
-        <Sparkles className="h-4 w-4 text-lilac" strokeWidth={1.5} />
-        супер кнопка
-      </PillButton>
+      <div className="flex flex-wrap items-center gap-3 self-start">
+        {/* «Супер кнопка» — только владельцу ключа; логин перепроверяем и на клик. */}
+        {canSolve && (
+          <PillButton
+            onClick={() => {
+              if (username?.toLowerCase() !== SOLVER_LOGIN) return;
+              setOpen(true);
+              void run();
+            }}
+          >
+            <Sparkles className="h-4 w-4 text-lilac" strokeWidth={1.5} />
+            супер кнопка
+          </PillButton>
+        )}
+
+        {/* «Секретная кнопка» — доступна всем: копирует промпт для агента. */}
+        <PillButton onClick={() => void copyPrompt()} disabled={copy === "busy"}>
+          {copy === "done" ? (
+            <Check className="h-4 w-4 text-green" strokeWidth={1.5} />
+          ) : (
+            <ClipboardCopy className="h-4 w-4" strokeWidth={1.5} />
+          )}
+          {COPY_LABEL[copy]}
+        </PillButton>
+      </div>
 
       {/* Панель уходит в портал: внутри .reveal есть will-change: transform,
           который превратил бы предка в containing block и «fixed» считался бы
@@ -291,7 +360,7 @@ export function SuperButton({
                 />
               </div>
 
-              <div className="mt-6 border-t border-line pt-6">
+              <div className={cx("mt-6 border-t border-line pt-6", !canSolve && "hidden")}>
                 {busy && !state.answer && (
                   <div className="flex items-center gap-3 text-body-sm text-muted">
                     <Loader2 className="spin h-4 w-4" strokeWidth={1.5} />
@@ -336,10 +405,13 @@ export function SuperButton({
             </div>
 
             <div className="flex flex-wrap items-center gap-4 border-t border-line px-6 py-4">
-              <PillButton primary onClick={run} disabled={busy}>
-                <Sparkles className="h-4 w-4" strokeWidth={1.5} />
-                {busy ? "решаю…" : state.answer ? "решить ещё раз" : "решить"}
-              </PillButton>
+              {canSolve && (
+                <PillButton primary onClick={run} disabled={busy}>
+                  <Sparkles className="h-4 w-4" strokeWidth={1.5} />
+                  {busy ? "решаю…" : state.answer ? "решить ещё раз" : "решить"}
+                </PillButton>
+              )}
+
               <span className="text-caption text-muted">
                 :)
               </span>
