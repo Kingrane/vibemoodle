@@ -7,3 +7,6 @@ dist-ssr
 *.tsbuildinfo
 .playwright-mcp
 shot-*.png
+.env
+.env.*
+!.env.example

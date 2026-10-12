@@ -39,6 +39,7 @@ import {
 import { FileList } from "@/ui/FileList";
 import { FilePreviewFrames } from "@/ui/FilePreview";
 import { SubmissionForm } from "@/ui/SubmissionForm";
+import { SuperButton } from "@/ui/SuperButton";
 
 const moduleUrl = (modname: string, cmid: number) =>
   `${MOODLE_ORIGIN}/mod/${modname}/view.php?id=${cmid}`;
@@ -387,6 +388,8 @@ function ModuleView({ cm }: { cm: MoodleModule }) {
             </span>
             {cm.name}
           </h1>
+
+          <SuperButton cm={cm} mod={mod} token={token} />
 
           {mod?.dates &&
             mod.dates.length > 0 &&
