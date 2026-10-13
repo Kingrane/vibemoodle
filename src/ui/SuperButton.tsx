@@ -44,20 +44,35 @@ const COPY_LABEL: Record<CopyState, string> = {
   fail: "не удалось скопировать",
 };
 
-/** В буфер обмена: сначала Clipboard API, потом фолбэк для http и старых браузеров. */
-async function copyText(text: string): Promise<void> {
+/**
+ * В буфер обмена. Clipboard API зовём сразу, без await до него: Safari считает
+ * жест израсходованным после первого ожидания и запись отклоняет. Фолбэк — для
+ * http и старых браузеров; ему нужен сфокусированный выделенный textarea,
+ * иначе Safari и iOS возвращают из execCommand false.
+ */
+function copyText(text: string): Promise<void> {
   try {
-    await navigator.clipboard.writeText(text);
-    return;
-  } catch {
-    /* нет разрешения или не secure context — пробуем старый способ */
+    const direct = navigator.clipboard?.writeText(text);
+    if (direct) return direct.catch(() => fallbackCopy(text));
+    fallbackCopy(text);
+    return Promise.resolve();
+  } catch (err) {
+    return Promise.reject(err);
   }
+}
+
+function fallbackCopy(text: string): void {
   const area = document.createElement("textarea");
   area.value = text;
+  area.setAttribute("readonly", "");
   area.style.position = "fixed";
+  area.style.top = "0";
+  area.style.left = "0";
   area.style.opacity = "0";
   document.body.append(area);
+  area.focus();
   area.select();
+  area.setSelectionRange(0, text.length);
   const ok = document.execCommand("copy");
   area.remove();
   if (!ok) throw new Error("копирование не сработало");
@@ -119,8 +134,29 @@ export function SuperButton({
   const [files, setFiles] = useState<Attachment[]>([]);
   const [paste, setPaste] = useState("");
   const [copy, setCopy] = useState<CopyState>("idle");
+  /**
+   * Материал тянем сразу при открытии страницы: Safari не разрешает писать в
+   * буфер после await, поэтому на клик текст обязан быть уже готовым.
+   */
+  const [material, setMaterial] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    let alive = true;
+    setMaterial(null);
+    gatherMaterial(token, cm, mod)
+      .then((text) => {
+        if (alive) setMaterial(text);
+      })
+      .catch(() => {
+        // Не дотянулись — не блокируем кнопку: промпт соберётся по названию.
+        if (alive) setMaterial("");
+      });
+    return () => {
+      alive = false;
+    };
+  }, [token, cm, mod]);
 
   /** Заготовки одним блоком: и для модели, и для промпта агенту. */
   const extraContext = () =>
@@ -158,11 +194,12 @@ export function SuperButton({
     abortRef.current = controller;
     setState({ status: "loading", answer: "" });
     try {
-      const material = await gatherMaterial(token, cm, mod);
+      // Кэш материала используем только если он непустой, иначе тянем заново.
+      const text = material || (await gatherMaterial(token, cm, mod));
       // Заготовки со страницы сдаются вместе с текстом материала.
       const extra = extraContext();
       const question = [
-        material || cm.name,
+        text || cm.name,
         extra && `Заготовки от студента:\n${extra}`,
       ]
         .filter(Boolean)
@@ -195,17 +232,18 @@ export function SuperButton({
     }
   };
 
-  const copyPrompt = async () => {
+  const copyPrompt = () => {
+    if (material === null) return;
+    // Ни одного await до copyText: Safari отклоняет запись, если жест израсходован.
+    const prompt = buildAgentPrompt({
+      title: cm.name,
+      material,
+      attachments: extraContext(),
+    });
     setCopy("busy");
-    try {
-      const material = await gatherMaterial(token, cm, mod);
-      await copyText(
-        buildAgentPrompt({ title: cm.name, material, attachments: extraContext() }),
-      );
-      setCopy("done");
-    } catch {
-      setCopy("fail");
-    }
+    copyText(prompt)
+      .then(() => setCopy("done"))
+      .catch(() => setCopy("fail"));
   };
 
   useEffect(() => {
@@ -236,13 +274,13 @@ export function SuperButton({
         )}
 
         {/* «Секретная кнопка» — доступна всем: копирует промпт для агента. */}
-        <PillButton onClick={() => void copyPrompt()} disabled={copy === "busy"}>
+        <PillButton onClick={copyPrompt} disabled={material === null || copy === "busy"}>
           {copy === "done" ? (
             <Check className="h-4 w-4 text-green" strokeWidth={1.5} />
           ) : (
             <ClipboardCopy className="h-4 w-4" strokeWidth={1.5} />
           )}
-          {COPY_LABEL[copy]}
+          {material === null ? COPY_LABEL.busy : COPY_LABEL[copy]}
         </PillButton>
       </div>
 
