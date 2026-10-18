@@ -3,6 +3,7 @@ import { useSession } from "@/session/useSession";
 import * as api from "./moodle";
 import * as enrolment from "./enrolment";
 import * as submission from "./submission";
+import { loadQuizReview } from "./quizReview";
 
 /** Все запросы привязаны к токену — при выходе кэш недоступен. */
 
@@ -200,6 +201,27 @@ export function useQuizBestGrade(quizid: number | undefined) {
     queryKey: ["quiz-grade", token, quizid],
     queryFn: () => api.getQuizBestGrade(token!, quizid!),
     enabled: !!token && !!quizid,
+    staleTime: 1000 * 60 * 5,
+  });
+}
+
+export function useQuizAttempts(quizid: number | undefined) {
+  const { token } = useSession();
+  return useQuery({
+    queryKey: ["quiz-attempts", token, quizid],
+    queryFn: () => api.getQuizAttempts(token!, quizid!),
+    enabled: !!token && !!quizid,
+    staleTime: 1000 * 60 * 5,
+  });
+}
+
+/** Разбор попытки: вопросы, ответы, отзыв преподавателя. */
+export function useQuizReview(attemptid: number | undefined) {
+  const { token } = useSession();
+  return useQuery({
+    queryKey: ["quiz-review", token, attemptid],
+    queryFn: () => loadQuizReview(token!, attemptid!),
+    enabled: !!token && !!attemptid,
     staleTime: 1000 * 60 * 5,
   });
 }

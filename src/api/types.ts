@@ -389,6 +389,34 @@ export interface QuizBestGrade {
   gradetopass?: number;
 }
 
+export interface QuizAttempt {
+  id: number;
+  quiz: number;
+  attempt: number;
+  state: string;
+  timestart: number;
+  timefinish: number;
+  sumgrades?: number | null;
+}
+
+export interface QuizReviewQuestion {
+  slot: number;
+  type: string;
+  page?: number;
+  /** Готовый Moodle-блок вопроса: текст, варианты, отзыв, вложения. */
+  html: string;
+  status?: string;
+  mark?: number | string;
+  maxmark?: number | string;
+}
+
+export interface QuizReview {
+  /** Итог попытки в баллах. */
+  grade?: number | string | null;
+  attempt: QuizAttempt;
+  questions: QuizReviewQuestion[];
+}
+
 
 export interface CalEvent {
   id: number;

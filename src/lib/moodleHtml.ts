@@ -86,3 +86,10 @@ export function buildMoodleHtml(
 export function hasHtml(raw?: string | null): boolean {
   return Boolean(raw && /<[a-z][\s\S]*>/i.test(raw));
 }
+
+/** HTML из Moodle → простой текст: промптам и превью разметка не нужна. */
+export function htmlToText(html?: string | null): string {
+  if (!html) return "";
+  if (typeof DOMParser === "undefined") return html.replace(/<[^>]+>/g, " ");
+  return new DOMParser().parseFromString(html, "text/html").body.textContent ?? "";
+}

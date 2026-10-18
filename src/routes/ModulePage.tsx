@@ -14,10 +14,13 @@ import {
   useCourseContents,
   useCourseModule,
   usePages,
+  useQuizAttempts,
   useQuizBestGrade,
+  useQuizReview,
   useQuizzes,
   useUrls,
 } from "@/api/hooks";
+import { lastFinishedAttempt } from "@/api/quizReview";
 import { useSession } from "@/session/useSession";
 import {
   formatDate,
@@ -38,6 +41,7 @@ import {
 } from "@/ui/primitives";
 import { FileList } from "@/ui/FileList";
 import { FilePreviewFrames } from "@/ui/FilePreview";
+import { QuizReview } from "@/ui/QuizReview";
 import { SubmissionForm } from "@/ui/SubmissionForm";
 import { SuperButton } from "@/ui/SuperButton";
 
@@ -242,6 +246,9 @@ function QuizBody({ cm, mod, token }: { cm: MoodleModule; mod?: MoodleModule; to
   const query = useQuizzes(cm.course!);
   const quiz = query.data?.find((q) => q.coursemodule === cm.id);
   const best = useQuizBestGrade(quiz?.id);
+  const attempts = useQuizAttempts(quiz?.id);
+  const attempt = lastFinishedAttempt(attempts.data);
+  const review = useQuizReview(attempt?.id);
 
   if (query.isLoading) return <BodyLoading />;
   if (query.isError) return <BodyError error={query.error} onRetry={() => query.refetch()} />;
@@ -289,6 +296,8 @@ function QuizBody({ cm, mod, token }: { cm: MoodleModule; mod?: MoodleModule; to
       )}
 
       <Html raw={quiz?.intro ?? mod?.description} token={token} />
+
+      {review.data && <QuizReview review={review.data} maxGrade={quiz?.grade} token={token} />}
 
       <OpenInMoodle href={moduleUrl("quiz", cm.id)} label="пройти в Moodle" />
     </div>

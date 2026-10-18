@@ -134,6 +134,9 @@ export function SuperButton({
   const [files, setFiles] = useState<Attachment[]>([]);
   const [paste, setPaste] = useState("");
   const [copy, setCopy] = useState<CopyState>("idle");
+  /** Ручной фолбэк: браузер не дал буфер — показываем текст для выделения. */
+  const [manual, setManual] = useState(false);
+  const [promptText, setPromptText] = useState("");
   /**
    * Материал тянем сразу при открытии страницы: Safari не разрешает писать в
    * буфер после await, поэтому на клик текст обязан быть уже готовым.
@@ -141,6 +144,7 @@ export function SuperButton({
   const [material, setMaterial] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  const promptRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     let alive = true;
@@ -173,18 +177,21 @@ export function SuperButton({
   };
 
   useEffect(() => {
-    if (!open) return;
+    if (!open && !manual) return;
     const previous = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setOpen(false);
+      if (e.key === "Escape") {
+        setOpen(false);
+        setManual(false);
+      }
     };
     window.addEventListener("keydown", onKey);
     return () => {
       document.body.style.overflow = previous;
       window.removeEventListener("keydown", onKey);
     };
-  }, [open]);
+  }, [open, manual]);
 
   useEffect(() => () => abortRef.current?.abort(), []);
 
@@ -240,11 +247,22 @@ export function SuperButton({
       material,
       attachments: extraContext(),
     });
+    setPromptText(prompt);
     setCopy("busy");
     copyText(prompt)
       .then(() => setCopy("done"))
-      .catch(() => setCopy("fail"));
+      .catch(() => {
+        setCopy("fail");
+        setManual(true);
+      });
   };
+
+  // Выделяем сразу: на телефоне останется только «копировать» в меню выделения.
+  useEffect(() => {
+    if (!manual) return;
+    promptRef.current?.focus();
+    promptRef.current?.select();
+  }, [manual]);
 
   useEffect(() => {
     if (copy !== "done" && copy !== "fail") return;
@@ -458,6 +476,69 @@ export function SuperButton({
         </>,
         document.body,
       )}
+
+      {/* Если буфер недоступен (http, вебвью на телефоне) — текст всё равно
+          можно забрать: поле уже выделено, остаётся «копировать». */}
+      {manual &&
+        createPortal(
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label="Промпт для агента"
+            onClick={() => setManual(false)}
+            className="fixed inset-0 z-[60] flex items-end justify-center bg-canvas/80 p-4 backdrop-blur-sm sm:items-center"
+          >
+            <div
+              onClick={(e) => e.stopPropagation()}
+              className="flex max-h-[85dvh] w-full max-w-[560px] flex-col rounded-card border border-line bg-panel"
+            >
+              <div className="flex items-start justify-between gap-4 border-b border-line px-5 py-4">
+                <div className="flex flex-col gap-2">
+                  <span className="eyebrow">промпт</span>
+                  <span className="text-caption text-muted">
+                    буфер обмена недоступен — выделите текст и скопируйте вручную
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  aria-label="Закрыть"
+                  onClick={() => setManual(false)}
+                  className="grid h-9 w-9 shrink-0 place-items-center rounded-full border border-line text-muted transition-colors duration-300 hover:text-cream"
+                >
+                  <X className="h-4 w-4" strokeWidth={1.5} />
+                </button>
+              </div>
+
+              <div className="flex min-h-0 flex-1 px-5 py-4">
+                <textarea
+                  ref={promptRef}
+                  readOnly
+                  value={promptText}
+                  onFocus={(e) => e.target.select()}
+                  className={cx(FIELD, "min-h-40 flex-1 font-mono text-caption")}
+                />
+              </div>
+
+              <div className="flex flex-wrap items-center gap-4 border-t border-line px-5 py-4">
+                <PillButton
+                  onClick={() => {
+                    copyText(promptText)
+                      .then(() => {
+                        setCopy("done");
+                        setManual(false);
+                      })
+                      .catch(() => setCopy("fail"));
+                  }}
+                >
+                  <ClipboardCopy className="h-4 w-4" strokeWidth={1.5} />
+                  скопировать ещё раз
+                </PillButton>
+                <span className="text-caption text-muted">{promptText.length} симв.</span>
+              </div>
+            </div>
+          </div>,
+          document.body,
+        )}
     </>
   );
 }

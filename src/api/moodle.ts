@@ -12,7 +12,9 @@ import type {
   MoodleQuiz,
   MoodleSection,
   MoodleUrlResource,
+  QuizAttempt,
   QuizBestGrade,
+  QuizReview,
   SearchCourseResult,
   SiteInfo,
   SubmissionState,
@@ -72,6 +74,19 @@ export const getUrls = async (token: string, courseid: number) => {
 
 export const getQuizBestGrade = (token: string, quizid: number) =>
   callFunction<QuizBestGrade>(token, "mod_quiz_get_user_best_grade", { quizid });
+
+export const getQuizAttempts = async (token: string, quizid: number) => {
+  const data = await callFunction<{ attempts: QuizAttempt[] }>(
+    token,
+    "mod_quiz_get_user_attempts",
+    { quizid, status: "all" },
+  );
+  return data.attempts ?? [];
+};
+
+/** Полный разбор попытки: вопросы, ответы, отзыв, вложения. */
+export const getQuizAttemptReview = (token: string, attemptid: number) =>
+  callFunction<QuizReview>(token, "mod_quiz_get_attempt_review", { attemptid });
 
 
 /** Курсы одной категории (для каталога). Отдаёт в том числе `enrollmentmethods`. */

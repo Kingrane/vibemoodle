@@ -1,12 +1,7 @@
+import { htmlToText } from "@/lib/moodleHtml";
 import { getAssignments, getPages, getQuizzes, getUrls } from "./moodle";
+import { quizReviewText } from "./quizReview";
 import type { MoodleModule } from "./types";
-
-/** HTML из Moodle → простой текст: модели не нужна разметка. */
-function htmlToText(html?: string | null): string {
-  if (!html) return "";
-  if (typeof DOMParser === "undefined") return html.replace(/<[^>]+>/g, " ");
-  return new DOMParser().parseFromString(html, "text/html").body.textContent ?? "";
-}
 
 function clean(text: string): string {
   return text.replace(/[ \t]+/g, " ").replace(/\n{3,}/g, "\n\n").trim();
@@ -43,7 +38,10 @@ export async function gatherMaterial(
         push(htmlToText(assigns.find((a) => a.cmid === cm.id)?.intro));
       } else if (cm.modname === "quiz") {
         const quizzes = await getQuizzes(token, course);
-        push(htmlToText(quizzes.find((q) => q.coursemodule === cm.id)?.intro));
+        const quiz = quizzes.find((q) => q.coursemodule === cm.id);
+        push(htmlToText(quiz?.intro));
+        // Разбор попытки: вопросы, мои ответы, баллы и отзывы преподавателя.
+        push(await quizReviewText(token, quiz?.id));
       } else if (cm.modname === "url") {
         const urls = await getUrls(token, course);
         const url = urls.find((u) => u.coursemodule === cm.id);
