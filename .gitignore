@@ -10,3 +10,4 @@ shot-*.png
 .env
 .env.*
 !.env.example
+test.md

@@ -140,12 +140,25 @@ export function SubmissionForm({
 
   const [chosen, setChosen] = useState<File[]>([]);
   const [text, setText] = useState("");
+  /** Код текстом для заданий, где Moodle принимает только файлы. */
+  const [code, setCode] = useState("");
+  const [codeName, setCodeName] = useState(() => `main${limits.fileTypes[0] ?? ".cpp"}`);
   const [acceptStatement, setAcceptStatement] = useState(false);
   const [confirming, setConfirming] = useState(false);
   const [notice, setNotice] = useState<{ tone: "ok" | "err"; text: string } | null>(null);
   const [progress, setProgress] = useState<string | null>(null);
   const [dragging, setDragging] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  /**
+   * Код из поля уходит обычным файлом: онлайн-текст во всех заданиях курса
+   * выключен, а файловый плагин включён — так преподаватель увидит его как обычно.
+   */
+  const codeFile = useMemo(() => {
+    if (!limits.fileEnabled || limits.onlineEnabled) return null;
+    if (!code.trim()) return null;
+    return new File([code], codeName.trim() || "main.cpp", { type: "text/plain" });
+  }, [code, codeName, limits]);
 
   const invalidate = () => {
     for (const key of [
@@ -163,9 +176,10 @@ export function SubmissionForm({
 
   const send = useMutation({
     mutationFn: async (kind: "draft" | "final") => {
+      const files = codeFile ? [...chosen, codeFile] : chosen;
       let fileItemId: number | undefined;
-      if (limits.fileEnabled && chosen.length > 0) {
-        fileItemId = await uploadFilesToDraft(token, chosen, (done, total) =>
+      if (limits.fileEnabled && files.length > 0) {
+        fileItemId = await uploadFilesToDraft(token, files, (done, total) =>
           setProgress(`загружаю файлы: ${done} / ${total}`),
         );
       }
@@ -197,6 +211,7 @@ export function SubmissionForm({
       setProgress(null);
       setChosen([]);
       setText("");
+      setCode("");
       setAcceptStatement(false);
       setNotice({
         tone: "ok",
@@ -280,21 +295,26 @@ export function SubmissionForm({
   };
 
   const validate = (kind: "draft" | "final"): string | null => {
-    if (limits.fileEnabled && chosen.length > limits.maxFiles) {
+    const files = codeFile ? [...chosen, codeFile] : chosen;
+    if (limits.fileEnabled && files.length > limits.maxFiles) {
       return `Не больше ${limits.maxFiles} файлов.`;
     }
     if (limits.fileEnabled && limits.maxBytes) {
-      const big = chosen.find((f) => f.size > limits.maxBytes);
+      const big = files.find((f) => f.size > limits.maxBytes);
       if (big) return `«${big.name}» больше ${humanSize(limits.maxBytes)}.`;
     }
     if (limits.fileEnabled && limits.fileTypes.length) {
-      const bad = chosen.find(
+      const bad = files.find(
         (f) => !limits.fileTypes.some((ext) => f.name.toLowerCase().endsWith(ext)),
       );
-      if (bad) return `«${bad.name}» — недопустимый тип файла.`;
+      if (bad) {
+        return codeFile && bad === codeFile
+          ? `Имя файла с кодом должно оканчиваться на ${limits.fileTypes.join(", ")}.`
+          : `«${bad.name}» — недопустимый тип файла.`;
+      }
     }
     const hasNew =
-      chosen.length > 0 || (limits.onlineEnabled && text.trim().length > 0);
+      files.length > 0 || (limits.onlineEnabled && text.trim().length > 0);
     if (!hasNew && !hasSubmission) return "Добавьте файл или текст.";
     if (kind === "draft" && !hasNew) return "Нечего сохранять.";
     if (kind === "final" && assign.requiresubmissionstatement && !acceptStatement) {
@@ -323,6 +343,7 @@ export function SubmissionForm({
   };
 
   const wordCount = text.trim() ? text.trim().split(/\s+/).length : 0;
+  const codeLines = code.trim() ? code.trim().split("\n").length : 0;
 
   return (
     <section className="mt-10 border-t border-line pt-8">
@@ -523,6 +544,38 @@ export function SubmissionForm({
             </div>
           )}
 
+          {limits.fileEnabled && !limits.onlineEnabled && (
+            <div>
+              <div className="flex flex-wrap items-baseline justify-between gap-2">
+                <span className="text-caption text-muted">код текстом · уйдёт файлом</span>
+                <span className="text-caption text-muted/70">{codeLines} стр.</span>
+              </div>
+              <textarea
+                value={code}
+                onChange={(e) => {
+                  setCode(e.target.value);
+                  setNotice(null);
+                }}
+                rows={8}
+                spellCheck={false}
+                placeholder="вставьте код — он уйдёт файлом, как обычная сдача"
+                className={cx(FIELD, "mt-2 resize-y font-mono text-caption")}
+              />
+              <label className="mt-2 flex items-center gap-2 text-caption text-muted/70">
+                имя файла
+                <input
+                  value={codeName}
+                  onChange={(e) => {
+                    setCodeName(e.target.value);
+                    setNotice(null);
+                  }}
+                  spellCheck={false}
+                  className="w-44 border-b border-line bg-transparent py-1 text-body-sm text-cream outline-none transition-colors duration-300 focus:border-cream"
+                />
+              </label>
+            </div>
+          )}
+
           {limits.onlineEnabled && (
             <div>
               <div className="flex flex-wrap items-baseline justify-between gap-2">
@@ -582,7 +635,12 @@ export function SubmissionForm({
                 {limits.onlineEnabled && text.trim() ? (
                   <li>онлайн-ответ: {wordCount} сл.</li>
                 ) : null}
-                {chosen.length === 0 && !text.trim() && !existingFiles.length && !existingText ? (
+                {codeFile && (
+                  <li>
+                    код текстом: {codeFile.name}, {codeLines} стр.
+                  </li>
+                )}
+                {chosen.length === 0 && !codeFile && !text.trim() && !existingFiles.length && !existingText ? (
                   <li className="text-pink">ничего не добавлено</li>
                 ) : null}
               </ul>
