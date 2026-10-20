@@ -8,7 +8,7 @@ import {
   Link2,
 } from "lucide-react";
 import { MOODLE_ORIGIN } from "@/api/transport";
-import type { MoodleFileContent, MoodleModule } from "@/api/types";
+import type { MoodleFileContent, MoodleModule, QuizAttempt } from "@/api/types";
 import {
   useAssignments,
   useCourseContents,
@@ -20,7 +20,7 @@ import {
   useQuizzes,
   useUrls,
 } from "@/api/hooks";
-import { lastFinishedAttempt } from "@/api/quizReview";
+import { formatScore, hasReviewContent, lastFinishedAttempt } from "@/api/quizReview";
 import { useSession } from "@/session/useSession";
 import {
   formatDate,
@@ -242,6 +242,36 @@ function AssignBody({ cm, mod, token }: { cm: MoodleModule; mod?: MoodleModule; 
   );
 }
 
+/**
+ * Когда разбора нет: попыток не было, попытка ещё идёт или Moodle запретил
+ * просмотр (`noreview`). Молча пустое место выглядит как поломка.
+ */
+function QuizNoReview({
+  attempts,
+  error,
+}: {
+  attempts?: QuizAttempt[];
+  error: unknown;
+}) {
+  const running = attempts?.find((attempt) => attempt.state === "inprogress");
+  const message = error instanceof Error && error.message ? error.message : null;
+
+  return (
+    <div className="border-t border-line pt-6">
+      <span className="eyebrow">разбор попытки</span>
+      <p className="mt-3 max-w-2xl text-body-sm text-muted">
+        {running
+          ? `Попытка начата ${formatDateTime(running.timestart)} и ещё не завершена — закончить её можно только в Moodle, разбор появится после.`
+          : message
+            ? `${message} Посмотреть попытку можно в Moodle.`
+            : attempts?.length
+              ? "Moodle не отдал разбор этой попытки — просмотр отключён в настройках теста."
+              : "Попыток пока нет: тест проходится в Moodle, разбор появится здесь после завершения."}
+      </p>
+    </div>
+  );
+}
+
 function QuizBody({ cm, mod, token }: { cm: MoodleModule; mod?: MoodleModule; token: string }) {
   const query = useQuizzes(cm.course!);
   const quiz = query.data?.find((q) => q.coursemodule === cm.id);
@@ -287,7 +317,7 @@ function QuizBody({ cm, mod, token }: { cm: MoodleModule; mod?: MoodleModule; to
         <div className="border-t border-line pt-6">
           <span className="text-caption text-muted">ваш лучший результат</span>
           <div className="mt-2 text-heading-sm font-semibold leading-none text-green tabular-nums">
-            {best.data.grade}
+            {formatScore(best.data.grade)}
             {quiz?.grade ? (
               <span className="text-body text-muted"> / {quiz.grade}</span>
             ) : null}
@@ -297,7 +327,11 @@ function QuizBody({ cm, mod, token }: { cm: MoodleModule; mod?: MoodleModule; to
 
       <Html raw={quiz?.intro ?? mod?.description} token={token} />
 
-      {review.data && <QuizReview review={review.data} maxGrade={quiz?.grade} token={token} />}
+      {review.data && hasReviewContent(review.data) ? (
+        <QuizReview review={review.data} maxGrade={quiz?.grade} token={token} />
+      ) : (
+        <QuizNoReview attempts={attempts.data} error={review.error} />
+      )}
 
       <OpenInMoodle href={moduleUrl("quiz", cm.id)} label="пройти в Moodle" />
     </div>

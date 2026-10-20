@@ -127,6 +127,11 @@ export function parseQuizReview(review: QuizReview): QuizQuestionView[] {
   return (review.questions ?? []).map(parseQuestion);
 }
 
+/** Moodle отдаёт попытку с пустыми вопросами, когда просмотр запрещён. */
+export function hasReviewContent(review?: QuizReview): boolean {
+  return Boolean(review?.questions?.some((question) => (question.html ?? "").trim()));
+}
+
 /** Последняя завершённая попытка — её и разбираем. */
 export function lastFinishedAttempt(attempts?: QuizAttempt[]): QuizAttempt | undefined {
   return (attempts ?? [])
@@ -154,10 +159,18 @@ export function loadQuizReview(token: string, attemptid: number): Promise<QuizRe
 /** Текст разбора для промпта: вопросы, мои ответы, баллы и отзывы. */
 export async function quizReviewText(token: string, quizid?: number): Promise<string> {
   if (!quizid) return "";
-  const attempt = lastFinishedAttempt(await getQuizAttempts(token, quizid));
-  if (!attempt) return "";
-  const review = await loadQuizReview(token, attempt.id);
+  try {
+    const attempt = lastFinishedAttempt(await getQuizAttempts(token, quizid));
+    if (!attempt) return "";
+    const review = await loadQuizReview(token, attempt.id);
+    return formatReviewText(review);
+  } catch {
+    // Просмотр попытки может быть запрещён (`noreview`) — промпт соберётся без неё.
+    return "";
+  }
+}
 
+function formatReviewText(review: QuizReview): string {
   return parseQuizReview(review)
     .map((question) => {
       const lines = [

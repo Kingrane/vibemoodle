@@ -1,10 +1,25 @@
 import { htmlToText } from "@/lib/moodleHtml";
 import { getAssignments, getPages, getQuizzes, getUrls } from "./moodle";
 import { quizReviewText } from "./quizReview";
-import type { MoodleModule } from "./types";
+import type { MoodleModule, MoodleQuiz } from "./types";
 
 function clean(text: string): string {
   return text.replace(/[ \t]+/g, " ").replace(/\n{3,}/g, "\n\n").trim();
+}
+
+/**
+ * Кратко о тесте. Нужен, когда разбора нет (Moodle запрещает просмотр попытки
+ * или её ещё не было) — иначе в промпте остаётся одно название.
+ */
+function quizSummary(quiz?: MoodleQuiz): string {
+  if (!quiz) return "";
+  const facts = [
+    quiz.grade ? `максимум ${quiz.grade} баллов` : null,
+    quiz.attempts ? `попыток ${quiz.attempts}` : null,
+    quiz.timelimit ? `${Math.round(quiz.timelimit / 60)} минут` : null,
+  ].filter(Boolean);
+  if (facts.length === 0) return "";
+  return `Тест «${quiz.name}»: ${facts.join(" · ")}.`;
 }
 
 /**
@@ -41,7 +56,8 @@ export async function gatherMaterial(
         const quiz = quizzes.find((q) => q.coursemodule === cm.id);
         push(htmlToText(quiz?.intro));
         // Разбор попытки: вопросы, мои ответы, баллы и отзывы преподавателя.
-        push(await quizReviewText(token, quiz?.id));
+        const review = await quizReviewText(token, quiz?.id);
+        push(review || quizSummary(quiz));
       } else if (cm.modname === "url") {
         const urls = await getUrls(token, course);
         const url = urls.find((u) => u.coursemodule === cm.id);

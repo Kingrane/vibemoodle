@@ -56,6 +56,9 @@ src/
     transport.ts   HTTP к Moodle: обмен пароля на токен, callFunction, fileUrl,
                    MoodleError, encodeParams (плоские ключи courseids[0])
     moodle.ts      все вызовы ws-функций, разбор ответов
+    quizReview.ts  разбор завершённой попытки теста: HTML вопроса → текст,
+                   варианты, баллы, отзыв; текст разбора для промпта; кэш
+                   одного запроса на попытку
     submission.ts  ЕДИНСТВЕННЫЙ пишущий модуль сдачи: загрузка файлов в
                    черновик (webservice/upload.php), mod_assign_save_submission,
                    submit_for_grading, remove_submission
@@ -75,8 +78,9 @@ src/
     useTheme.ts    тёмная/светлая тема (ключ mmcs.theme)
     cx.ts, useDebounced.ts
   ui/              AppShell, primitives, CourseCard, FileList, FilePreview,
-                   SubmissionForm (форма сдачи), DeadlineRow, SubmissionBadge,
-                   Logo, UserMenu, ThemeToggle
+                   SubmissionForm (форма сдачи), QuizReview (разбор теста),
+                   DeadlineRow, SubmissionBadge, SuperButton (супер/секретная
+                   кнопки), Logo, UserMenu, ThemeToggle
   routes/          Login, Dashboard, Courses, Catalog, CoursePage, ModulePage,
                    Grades, Calendar, Search
   App.tsx          роуты
@@ -107,6 +111,7 @@ src/
 `core_calendar_get_calendar_monthly_view`, `mod_assign_get_submission_status`,
 `mod_page_get_pages_by_courses`, `mod_assign_get_assignments`,
 `mod_quiz_get_quizzes_by_courses`, `mod_quiz_get_user_best_grade`,
+`mod_quiz_get_user_attempts`, `mod_quiz_get_attempt_review`,
 `mod_url_get_urls_by_courses`.
 
 **Запись (только сдача задания, `submission.ts`):** `mod_assign_save_submission`
@@ -150,11 +155,34 @@ modname** (хуки не вызываются для чужих типов):
 | `page` | `usePages` | HTML страницы |
 | `resource` | — | `mod.contents`: PDF/видео во фрейме + список файлов |
 | `folder` | — | список файлов из `mod.contents` |
-| `assign` | `useAssignments` + `useSubmissionStatus` | даты, баллы, вложения; `SubmissionForm` — сдача файлов/онлайн-текста, когда `canedit` |
-| `quiz` | `useQuizzes` + `useQuizBestGrade` | даты, попытки, лучший результат, CTA |
+| `assign` | `useAssignments` + `useSubmissionStatus` | даты, баллы, вложения; `SubmissionForm` — сдача файлов/онлайн-текста, когда `canedit`; если `onlinetext` выключен, есть поле «код текстом» — текст уходит файлом |
+| `quiz` | `useQuizzes` + `useQuizBestGrade` + `useQuizAttempts` + `useQuizReview` | даты, попытки, лучший результат, разбор завершённой попытки (или состояние, почему разбора нет) |
 | `url` | `useUrls` | внешняя ссылка |
 | `label` | — | рендерится **инлайн** в списке курса, не как строка-ссылка |
 | иное | — | `description` + кнопка «открыть в Moodle» |
+
+**Разбор теста (`QuizReview.tsx`).** `mod_quiz_get_user_attempts` (status
+`all`) → последняя попытка со `state: "finished"` → `mod_quiz_get_attempt_review`.
+Ответ — не готовый HTML, а целый Moodle-блок вопроса со скриптами и формой,
+поэтому `api/quizReview.ts` вытаскивает из него `.qtext`, варианты
+(`.answer > .r0/.r1`, выбранный = `input:checked`; у `truefalse` текст в
+обычном `<label>`), `.outcome .feedback`, `.comment` (отзыв преподавателя —
+показываем, если он непустой) и `.attachments a` (файлы ответа).
+Разбор отдаётся только когда попытка завершена **и** преподаватель открыл
+просмотр: иначе `mod_quiz_get_attempt_review` бросает `errorcode: noreview`
+(«Вам не разрешён просмотр этого теста») или приходит с пустыми вопросами —
+тогда вместо разбора показывается объяснение (`QuizNoReview`).
+Тест в приложении не проходится: кнопки «начать» и плеера тестов нет.
+
+**Кнопки на странице материала (`SuperButton.tsx`).** «супер кнопка» видна
+только логину `SOLVER_LOGIN` (`api/inception.ts`, ключ
+`VITE_INCEPTION_API_KEY`; без ключа кнопки нет) и перепроверяет логин на клик.
+«секретная кнопка» доступна всем: собирает промпт (`api/agentPrompt.ts`) из
+`gatherMaterial` и заготовок панели и копирует его. Материал тянется заранее
+при монтировании, а запись в буфер идёт **синхронно из обработчика клика** —
+Safari считает жест израсходованным после первого `await` и отклоняет
+`clipboard.writeText`. Если буфер недоступен (http, вебвью на телефоне),
+промпт показывается в окне с уже выделенным полем — копируется вручную.
 
 Ссылки в строках курса (`CoursePage`) всегда ведут на `/module/:cmid` — материал
 открывается внутри приложения, а не улетает в Moodle.
@@ -218,6 +246,8 @@ modname** (хуки не вызываются для чужих типов):
 4. Форма сдачи: на открытом задании (`canedit=true`) видна зона файлов или
    текстовый редактор, на закрытом — «приём ответов закрыт». **Реальную
    отправку во время разработки не делать** — только рендер и разбор флагов.
+5. Разбор теста: страница с завершённой попыткой показывает вопросы и баллы, а
+   без разрешённого просмотра — объяснение, а не пустое место.
 
 Тестовый аккаунт мехмата для проверки — в скилле `edu-mmcs` (не хранить
 пароль в репозитории).
@@ -229,6 +259,12 @@ modname** (хуки не вызываются для чужих типов):
   использовать `canedit`.
 - Реальная отправка сдачи не проверялась вживую (не портить учебный аккаунт):
   загрузка файла и структура вызова подтверждены, но e2e-сдача — на пользователе.
+- Тесты в приложении **не проходятся** (правило из п.1): нет кнопки «начать» и
+  плеера вопросов. Разбор виден только для завершённой попытки и только если
+  преподаватель открыл просмотр; у части тестов ТФНД приходит `noreview`.
+- Поле «код текстом» в сдаче не отправляет онлайн-текст: у заданий курсов
+  плагин `onlinetext` обычно выключен, поэтому текст превращается в файл
+  (`main.cpp`, имя меняется) и уходит обычной загрузкой.
 - Приложение — не официальный сервис ЮФУ.
-- Не git-репозиторий; деплой — Vercel (`vercel.json`, SPA-роутинг), переменных
-  окружения не требует.
+- Репозиторий — `github.com/Kingrane/vibemoodle`, ветка `main`; деплой — Vercel
+  (`vercel.json`, SPA-роутинг), переменных окружения не требует.
