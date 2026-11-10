@@ -1,16 +1,20 @@
 /**
  * Транспорт к Moodle Web Services.
  *
- * Важная деталь: у edu.mmcs.sfedu.ru включён CORS (`Access-Control-Allow-Origin: *`)
+ * Важная деталь: у edu-mmcs.sfedu.ru включён CORS (`Access-Control-Allow-Origin: *`)
  * на `login/token.php` и `webservice/rest/server.php`, поэтому браузер обращается
  * к API напрямую. Своего бэкенда у приложения нет — пароль уходит только на
- * edu.mmcs.sfedu.ru и нигде не сохраняется.
+ * edu-mmcs.sfedu.ru и нигде не сохраняется.
+ *
+ * Внимание: старый домен `edu.mmcs.sfedu.ru` отвечает 301 на `edu-mmcs.sfedu.ru`
+ * без CORS-заголовков — браузер блокирует такую цепочку редиректов. Обращаться
+ * нужно сразу к новому домену.
  *
  * Если админ однажды отключит CORS — достаточно поменять `REST_ENDPOINT` / `TOKEN_ENDPOINT`
  * на свой прокси, остальной код трогать не нужно.
  */
 
-export const MOODLE_ORIGIN = "https://edu.mmcs.sfedu.ru";
+export const MOODLE_ORIGIN = "https://edu-mmcs.sfedu.ru";
 export const MOBILE_SERVICE = "moodle_mobile_app";
 
 export const TOKEN_ENDPOINT = `${MOODLE_ORIGIN}/login/token.php`;
@@ -75,7 +79,7 @@ async function parse<T>(res: Response, context: string): Promise<T> {
 function networkError(err: unknown): MoodleError {
   const message = err instanceof Error ? err.message : String(err);
   return new MoodleError(
-    `Не удалось связаться с edu.mmcs.sfedu.ru. ${message}`,
+    `Не удалось связаться с edu-mmcs.sfedu.ru. ${message}`,
     "network",
   );
 }

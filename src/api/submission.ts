@@ -67,7 +67,7 @@ export async function uploadFilesToDraft(
       );
     } catch {
       throw new UploadError(
-        `Не удалось загрузить «${file.name}»: нет связи с edu.mmcs.sfedu.ru.`,
+        `Не удалось загрузить «${file.name}»: нет связи с edu-mmcs.sfedu.ru.`,
         "network",
       );
     }

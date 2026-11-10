@@ -128,7 +128,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               rel="noreferrer"
               className="inline-flex items-center gap-2 text-muted transition-colors duration-300 hover:text-cream"
             >
-              edu.mmcs.sfedu.ru
+              edu-mmcs.sfedu.ru
               <ExternalLink className="h-3.5 w-3.5" strokeWidth={1.5} />
             </a>
             <NavLink to="/calendar" className="text-muted transition-colors duration-300 hover:text-cream">

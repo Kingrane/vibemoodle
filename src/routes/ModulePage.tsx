@@ -126,7 +126,7 @@ function OpenInMoodle({
         <ArrowUpRight className="h-4 w-4" strokeWidth={1.5} />
       </PillLink>
       <span className="text-caption text-muted">
-        откроется на edu.mmcs.sfedu.ru в новой вкладке
+        откроется на edu-mmcs.sfedu.ru в новой вкладке
       </span>
     </div>
   );

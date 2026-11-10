@@ -1,6 +1,6 @@
 # AGENTS.md — мехмат.edu
 
-Клиент учебных курсов мехмата ЮФУ (Moodle `edu.mmcs.sfedu.ru`). Чтение:
+Клиент учебных курсов мехмата ЮФУ (Moodle `edu-mmcs.sfedu.ru`). Чтение:
 дедлайны, материалы, оценки, прогресс — плюс сдача своих заданий файлами и
 онлайн-текстом по явному действию пользователя. Интерфейс на русском, дизайн — по
 `design.md` (стиль Gsap, двойная тема).
@@ -136,7 +136,7 @@ src/
   `quiz`, `url`, `folder`. `book`/`forum` могут отсутствовать.
 - **Сдавать можно ⟺ `lastattempt.canedit`.** Флаг `cansubmit` в Moodle 5.2
   приходит **всегда false** — на него нельзя полагаться (проверено на
-  edu.mmcs.sfedu.ru). Гейт формы: `submissionsenabled && !locked && canedit`.
+  edu-mmcs.sfedu.ru). Гейт формы: `submissionsenabled && !locked && canedit`.
   Настройки задания берутся из `configs` (`assignsubmission`: `file`,
   `onlinetext`) — `maxfilesubmissions`, `maxsubmissionsizebytes`,
   `filetypeslist`, `wordlimit`.
