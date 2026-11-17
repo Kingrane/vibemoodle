@@ -76,11 +76,14 @@ src/
     deadlines.ts   события Moodle → объекты дедлайнов
     useReveal.ts   появление блоков при скролле (scroll + rAF)
     useTheme.ts    тёмная/светлая тема (ключ mmcs.theme)
+    clipboard.ts   копирование в буфер с фолбэком для http/Safari
+    opencodeConfig.ts  конфиг opencode для «супер кнопки 2» (coarena, apinex)
     cx.ts, useDebounced.ts
   ui/              AppShell, primitives, CourseCard, FileList, FilePreview,
                    SubmissionForm (форма сдачи), QuizReview (разбор теста),
                    DeadlineRow, SubmissionBadge, SuperButton (супер/секретная
-                   кнопки), Logo, UserMenu, ThemeToggle
+                   кнопки), SuperConfig (супер кнопка 2 — конфиг opencode),
+                   Logo, UserMenu, ThemeToggle
   routes/          Login, Dashboard, Courses, Catalog, CoursePage, ModulePage,
                    Grades, Calendar, Search
   App.tsx          роуты
@@ -183,6 +186,12 @@ modname** (хуки не вызываются для чужих типов):
 Safari считает жест израсходованным после первого `await` и отклоняет
 `clipboard.writeText`. Если буфер недоступен (http, вебвью на телефоне),
 промпт показывается в окне с уже выделенным полем — копируется вручную.
+«супер кнопка 2» (`ui/SuperConfig.tsx`) — конфиг opencode по паролю: пароль
+`VITE_SUPER2_PASSWORD`, без него кнопки нет. После верного пароля
+`lib/opencodeConfig.ts` собирает `opencode.json` только с провайдерами
+`coarena` и `apinex` (deepseek-модели), ключи — `VITE_COARENA_API_KEY` /
+`VITE_APINEX_API_KEY` (если ключа нет, в конфиг уходит `{env:…}`), и текст
+сразу уходит в буфер; поле с конфигом остаётся для ручного копирования.
 
 Ссылки в строках курса (`CoursePage`) всегда ведут на `/module/:cmid` — материал
 открывается внутри приложения, а не улетает в Moodle.
