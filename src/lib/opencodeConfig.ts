@@ -1,12 +1,14 @@
 /**
- * Конфиг opencode для «супер кнопки 2»: только провайдеры coarena и apinex
- * с deepseek-моделями. Ключи берутся из env Vite (`VITE_COARENA_API_KEY`,
- * `VITE_APINEX_API_KEY`) и подставляются в конфиг; если ключа нет — остаётся
- * ссылка `{env:…}`, которую opencode раскрывает из своего окружения.
+ * Конфиг opencode для «супер кнопки 2»: провайдеры coarena, moonmath и
+ * orcarouter с deepseek-моделями. Ключи берутся из env Vite
+ * (`VITE_COARENA_API_KEY`, `VITE_MOONMATH_API_KEY`, `VITE_ORCAROUTER_API_KEY`)
+ * и подставляются в конфиг; если ключа нет — остаётся ссылка `{env:…}`,
+ * которую opencode раскрывает из своего окружения.
  */
 
 const COARENA_KEY = import.meta.env.VITE_COARENA_API_KEY ?? "";
-const APINEX_KEY = import.meta.env.VITE_APINEX_API_KEY ?? "";
+const MOONMATH_KEY = import.meta.env.VITE_MOONMATH_API_KEY ?? "";
+const ORCAROUTER_KEY = import.meta.env.VITE_ORCAROUTER_API_KEY ?? "";
 
 /** Пароль на кнопку. Пусто — кнопки нет. */
 export const SUPER2_PASSWORD = import.meta.env.VITE_SUPER2_PASSWORD ?? "";
@@ -38,16 +40,38 @@ export function buildOpencodeConfig(): string {
             },
           },
         },
-        apinex: {
+        moonmath: {
           npm: "@ai-sdk/openai-compatible",
-          name: "Apinex",
+          name: "MoonMath",
           options: {
-            baseURL: "https://api.apinex.bond/v1",
-            apiKey: key(APINEX_KEY, "APINEX_API_KEY"),
+            baseURL: "https://zro.moonmath.ai/v1",
+            apiKey: key(MOONMATH_KEY, "MOONMATH_API_KEY"),
           },
           models: {
-            "free/deepseek-v4.1-flash": {
-              name: "дэпсик 4.1 флэш",
+            "deepseek-v4.1-flash": {
+              name: "дыпсик 4.1 флэш",
+              reasoning: true,
+              limit: { context: 1048576, output: 64000 },
+            },
+          },
+        },
+        orcarouter: {
+          npm: "@ai-sdk/openai-compatible",
+          name: "OrcaRouter",
+          options: {
+            baseURL: "https://api.orcarouter.ai/v1",
+            apiKey: key(ORCAROUTER_KEY, "ORCAROUTER_API_KEY"),
+          },
+          models: {
+            "deepseek/deepseek-v4.1-flash-free": {
+              name: "дыпсик 4.1 флэш",
+              reasoning: true,
+              limit: { context: 1048576, output: 384000 },
+            },
+            "tencent/hy4-preview-free": {
+              name: "хуньюань 4 превью (free)",
+              reasoning: true,
+              limit: { context: 1048576, output: 64000 },
             },
           },
         },

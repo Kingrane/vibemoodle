@@ -77,7 +77,8 @@ src/
     useReveal.ts   появление блоков при скролле (scroll + rAF)
     useTheme.ts    тёмная/светлая тема (ключ mmcs.theme)
     clipboard.ts   копирование в буфер с фолбэком для http/Safari
-    opencodeConfig.ts  конфиг opencode для «супер кнопки 2» (coarena, apinex)
+    opencodeConfig.ts  конфиг opencode для «супер кнопки 2» (coarena, moonmath,
+                   orcarouter)
     cx.ts, useDebounced.ts
   ui/              AppShell, primitives, CourseCard, FileList, FilePreview,
                    SubmissionForm (форма сдачи), QuizReview (разбор теста),
@@ -189,8 +190,9 @@ Safari считает жест израсходованным после пер�
 «супер кнопка 2» (`ui/SuperConfig.tsx`) — конфиг opencode по паролю: пароль
 `VITE_SUPER2_PASSWORD`, без него кнопки нет. После верного пароля
 `lib/opencodeConfig.ts` собирает `opencode.json` только с провайдерами
-`coarena` и `apinex` (deepseek-модели), ключи — `VITE_COARENA_API_KEY` /
-`VITE_APINEX_API_KEY` (если ключа нет, в конфиг уходит `{env:…}`), и текст
+`coarena`, `moonmath` (zro.moonmath.ai) и `orcarouter` (deepseek-модели),
+ключи — `VITE_COARENA_API_KEY` / `VITE_MOONMATH_API_KEY` /
+`VITE_ORCAROUTER_API_KEY` (если ключа нет, в конфиг уходит `{env:…}`), и текст
 сразу уходит в буфер; поле с конфигом остаётся для ручного копирования.
 
 Ссылки в строках курса (`CoursePage`) всегда ведут на `/module/:cmid` — материал

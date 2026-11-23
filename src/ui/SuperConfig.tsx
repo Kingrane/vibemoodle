@@ -95,7 +95,7 @@ export function SuperConfig() {
                 <div className="flex flex-col gap-2">
                   <span className="eyebrow">супер кнопка 2</span>
                   <span className="text-caption text-muted">
-                    конфиг opencode · coarena и apinex deepseek
+                    конфиг opencode · coarena, moonmath и orcarouter deepseek
                   </span>
                 </div>
                 <button

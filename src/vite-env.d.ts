@@ -7,8 +7,10 @@ interface ImportMetaEnv {
   readonly VITE_SUPER2_PASSWORD?: string;
   /** Ключ Coarena для копируемого конфига opencode. */
   readonly VITE_COARENA_API_KEY?: string;
-  /** Ключ Apinex для копируемого конфига opencode. */
-  readonly VITE_APINEX_API_KEY?: string;
+  /** Ключ MoonMath (zro.moonmath.ai) для копируемого конфига opencode. */
+  readonly VITE_MOONMATH_API_KEY?: string;
+  /** Ключ OrcaRouter для копируемого конфига opencode. */
+  readonly VITE_ORCAROUTER_API_KEY?: string;
 }
 
 interface ImportMeta {
