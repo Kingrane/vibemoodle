@@ -31,7 +31,7 @@ export function buildOpencodeConfig(): string {
           },
           models: {
             "deepseek-v4-1-flash-1017": {
-              name: "DeepSeek V4.1 Flash",
+              name: "дыпсик 4.1 флэш",
               reasoning: true,
               attachment: true,
               limit: { context: 128000, output: 16384 },
@@ -47,7 +47,7 @@ export function buildOpencodeConfig(): string {
           },
           models: {
             "free/deepseek-v4.1-flash": {
-              name: "DeepSeek V4.1 Flash",
+              name: "дэпсик 4.1 флэш",
             },
           },
         },
